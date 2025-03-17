@@ -5,15 +5,16 @@ header("Content-type: application/json");
 $data = file_get_contents("php://input");
 $requestData = json_decode($data);
 
-// Verificar se o Username e o Email foram enviados
-if(!isset($requestData->Username) || !isset($requestData->Email)){
-    echo json_encode(['error' => 'Username and Email are required']);
+// Verificar se os campos obrigatórios foram enviados
+if (!isset($requestData->Produto) || !isset($requestData->Tensao) || !isset($requestData->Corrente)) {
+    http_response_code(400); // Código de erro HTTP
+    echo json_encode(['error' => 'Produto, Tensão e Corrente são obrigatórios']);
     exit;
 }
 
-$produto = $requestData->$Produto;
-$tensao = $requestData->$Tensao;
-$corrente = $requestData->$Corrente;
+$produto = $requestData->Produto;
+$tensao = $requestData->Tensao;
+$corrente = $requestData->Corrente;
 
 // Conectar ao banco de dados
 $host = 'localhost';
@@ -25,28 +26,30 @@ $port = 3306;
 $connection = new mysqli($host, $usernameDb, $passwordDb, $dbname, $port);
 
 // Verificar se a conexão foi bem-sucedida
-if($connection->connect_error){
-    echo json_encode(['error' => 'Database connection failed: ' . $connection->connect_error]);
+if ($connection->connect_error) {
+    http_response_code(500); // Código de erro interno do servidor
+    echo json_encode(['error' => 'Database connection failed']);
     exit;
 }
 
 // Preparar a query para inserir o usuário de maneira segura
 $sql = "INSERT INTO users (produto, tensao, corrente) VALUES (?, ?, ?)";
-
-// Usar prepared statement para evitar SQL injection
 $stmt = $connection->prepare($sql);
+
 if ($stmt === false) {
+    http_response_code(500);
     echo json_encode(['error' => 'Failed to prepare SQL statement']);
     exit;
 }
 
 // Bind dos parâmetros
-$stmt->bind_param('ss', $produto, $tensao, $corrente);
+$stmt->bind_param('sss', $produto, $tensao, $corrente);
 
 // Executar a query
-if($stmt->execute()) {
+if ($stmt->execute()) {
     echo json_encode(['success' => true, 'message' => 'User successfully added']);
 } else {
+    http_response_code(500);
     echo json_encode(['error' => 'Failed to add user']);
 }
 
